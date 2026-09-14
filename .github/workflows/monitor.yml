@@ -38,6 +38,10 @@ jobs:
         shell: bash
         run: npm install --silent --no-audit --no-fund >/dev/null 2>&1
 
+      - name: Build
+        shell: bash
+        run: npm run build >/dev/null 2>&1
+
       - name: Install Chromium
         shell: bash
         run: npx playwright install --with-deps chromium >/dev/null 2>&1
