@@ -1,0 +1,21 @@
+[Unit]
+Description=Bazdid silent full-page website monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bazdid
+Group=bazdid
+WorkingDirectory=/opt/bazdid
+ExecStart=/usr/bin/node /opt/bazdid/dist/index.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+StandardOutput=null
+StandardError=null
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
