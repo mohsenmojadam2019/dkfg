@@ -1,0 +1,40 @@
+name: Silent website monitor
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/monitor.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bazdid-silent-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    container:
+      image: mcr.microsoft.com/playwright:v1.55.0-noble
+      options: --ipc=host
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install dependencies
+        shell: bash
+        run: npm install --silent --no-audit --no-fund >/dev/null 2>&1
+
+      - name: Monitor every minute
+        shell: bash
+        env:
+          MAX_CYCLES: "60"
+        run: npm start >/dev/null 2>&1
