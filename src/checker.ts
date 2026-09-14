@@ -1,6 +1,6 @@
-import { createHash } from "node:crypto";
 import { Buffer } from "node:buffer";
-import type { Browser } from "playwright";
+import { createHash } from "node:crypto";
+import type { Browser, Page } from "playwright";
 import type { Baseline, CheckResult, CheckStatus, SiteConfig } from "./types.js";
 
 const ERROR_PATTERNS = [
@@ -19,27 +19,37 @@ const ERROR_PATTERNS = [
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-async function scrollWholePage(page: import("playwright").Page): Promise<void> {
-  const viewport = await page.evaluate(() => window.innerHeight || 800);
-  let previousHeight = 0;
+async function scrollWholePage(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+    let previousHeight = 0;
+    let stableBottomPasses = 0;
 
-  for (let step = 0; step < 60; step += 1) {
-    const height = await page.evaluate(() => document.documentElement.scrollHeight);
-    if (height <= previousHeight && step > 0) break;
-    previousHeight = height;
+    for (let step = 0; step < 80; step += 1) {
+      const root = document.documentElement;
+      const height = root.scrollHeight;
+      const stepSize = Math.max(Math.floor(window.innerHeight * 0.8), 500);
+      window.scrollBy(0, stepSize);
+      await delay(75);
 
-    const y = Math.min((step + 1) * Math.max(viewport * 0.8, 500), height);
-    await page.evaluate((nextY) => window.scrollTo(0, nextY), y);
-    await sleep(80);
+      const atBottom = window.scrollY + window.innerHeight >= root.scrollHeight - 4;
+      if (!atBottom) continue;
 
-    if (y >= height) {
-      await sleep(250);
-      const newHeight = await page.evaluate(() => document.documentElement.scrollHeight);
-      if (newHeight <= height) break;
+      await delay(250);
+      const newHeight = root.scrollHeight;
+      if (newHeight <= previousHeight || newHeight === height) {
+        stableBottomPasses += 1;
+      } else {
+        stableBottomPasses = 0;
+      }
+      previousHeight = newHeight;
+
+      if (stableBottomPasses >= 2) break;
     }
-  }
 
-  await page.evaluate(() => window.scrollTo(0, 0));
+    window.scrollTo(0, 0);
+  });
+
   await sleep(250);
 }
 
